@@ -5,90 +5,71 @@ const express = require('express');
 const app = express();
 const port = 3000;
 
-const TRADES_QUEUE = process.env.TRADES_QUEUE;
-const USER_QUEUE = process.env.USER_QUEUE;
+
 console
 app.use(express.json()); 
 
-const {
-    getData,
-    consumeQueueData
-} = require('./rabbitmq/rabbitmq');
+const { getData } = require('./rabbitmq/rabbitmq');
+const {multichainRpc} = require('./multichain/multichain');
+const {callPushTradeData, callPushUserData} = require('./call_rabitmq_data');
 
-const {
-    multichainRpc,
-} = require('./multichain/multichain');
-
-const {
-    pushUserData
-} = require('./user/users');
 
 app.get('/api/getData', getData);
 
 app.get('/get_user_data', async (req, res) => {
     try {
         const user_stream = 'exampleStream2'; // Replace with your actual stream name
+        const { user_code } = req.query; // Get user_code from query params
 
         // Fetching stream data from Multichain
-        const result = await multichainRpc("liststreamitems", [user_stream]);
+        const result = await multichainRpc('liststreamitems', [user_stream]);
 
-        if (result && result.length > 0) {
-            res.json({ code: 200, status: true, data: result });
+        if (!result || result.length === 0) {
+            return res.status(404).json({ code: 404, status: false, message: 'No data found in the stream' });
+        }
+
+        // Filter by user_code if provided
+        let filteredData = result;
+        if (user_code) {
+            filteredData = result.filter(item => item.keys && item.keys.includes(user_code));
+        }
+
+        // Check if filtered data exists
+        if (filteredData.length > 0) {
+            res.json({ code: 200, status: true, data: filteredData });
         } else {
-            res.status(404).json({ code: 404, status: false, message: 'No data found in the stream' });
+            res.status(404).json({ code: 404, status: false, message: user_code ? `No data found for user_code: ${user_code}` : 'No data found' });
         }
     } catch (error) {
-        console.error("Error fetching stream data:", error.message);
+        console.error('Error fetching stream data:', error.message);
         res.status(500).json({ code: 500, status: false, message: `Error fetching stream data: ${error.message}` });
     }
 });
 
-const callPushUserData = async () => {
-    try {
-        const userStream = 'exampleStream2';  // Stream name
-        const rawData = await consumeQueueData(TRADES_QUEUE); // Fetching data from the 'USER_QUEUE'
-        console.log('DATA FROM TRADES_QUEUE:',TRADES_QUEUE);
 
-        if (!rawData) {
-            console.log('No data consumed from the queue.');
-            return;
-        }
 
-        // Call pushUserData with userStream and rawData
-        const result = await pushUserData(userStream, rawData);
+app.post('/create_stream',async (req, res) => {
+    const { streamName, open } = req.body;
 
-        if (result && result.status) {
-            console.log('pushUserData result:', result);
-        } else {
-            console.log('Failed to push user data:', result.message);
-        }
-    } catch (error) {
-        console.error("Error in calling pushUserData:", error.message);
+    if (!streamName || typeof open === 'undefined') {
+        return res.status(400).json({ message: 'streamName and open are required fields.' });
     }
-};
+    console.log(`Creating stream: ${streamName} with open status: ${open}`);
 
-const callPushTradeData = async () => {
     try {
-        const TradeStream = 'exampleStream2';  // Stream name
-        const rawData = await consumeQueueData(USER_QUEUE); // Fetching data from the 'USER_QUEUE'
-        console.log('DATA FROM USERS:',USER_QUEUE);
+        const result = await multichainRpc("create", ["stream", streamName, open]);
+        console.log("Stream created:", result);
 
-        if (!rawData) {
-            console.log('No data consumed from the queue.');
-            return;
-        }
+        await multichainRpc("subscribe", [streamName]);
+        // await sendMessageToRabbitMQ(`Stream '${streamName}' created`);
 
-        const result = await pushUserData(TradeStream, rawData);
-
-        if (result && result.status) {
-            console.log('pushUserData result:', result);
-        } else {
-            console.log('Failed to push user data:', result.message);
-        }
+        res.json({ code: 201, status: true, message: `Stream '${streamName}' created, subscribed, and message sent to RabbitMQ` });
     } catch (error) {
-        console.error("Error in calling pushUserData:", error.message);
+        console.error("Failed to create stream or send message to RabbitMQ:", error.message);
+        res.status(500).json({ error: error.message });
     }
-};
+});
+
 // setInterval(() => {
     callPushUserData();
     callPushTradeData();

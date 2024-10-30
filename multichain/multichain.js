@@ -68,7 +68,7 @@ const CreateStream = async (req, res) => {
         console.log("Stream created:", result);
 
         await multichainRpc("subscribe", [streamName]);
-        await sendMessageToRabbitMQ(`Stream '${streamName}' created`);
+        // await sendMessageToRabbitMQ(`Stream '${streamName}' created`);
 
         res.json({ code: 201, status: true, message: `Stream '${streamName}' created, subscribed, and message sent to RabbitMQ` });
     } catch (error) {
