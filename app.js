@@ -1,10 +1,13 @@
+require('dotenv').config(); 
+
 const axios = require('axios');
 const express = require('express');
 const app = express();
 const port = 3000;
 
 const TRADES_QUEUE = process.env.TRADES_QUEUE;
-
+const USER_QUEUE = process.env.USER_QUEUE;
+console
 app.use(express.json()); 
 
 const {
@@ -18,12 +21,10 @@ const {
 
 const {
     pushUserData
-} = require('./User/users');
+} = require('./user/users');
 
-// Route to get data from Multichain
 app.get('/api/getData', getData);
 
-// Route to fetch user data from a specific Multichain stream
 app.get('/get_user_data', async (req, res) => {
     try {
         const user_stream = 'exampleStream2'; // Replace with your actual stream name
@@ -42,11 +43,11 @@ app.get('/get_user_data', async (req, res) => {
     }
 });
 
-// Function to call pushUserData
 const callPushUserData = async () => {
     try {
         const userStream = 'exampleStream2';  // Stream name
         const rawData = await consumeQueueData(TRADES_QUEUE); // Fetching data from the 'USER_QUEUE'
+        console.log('DATA FROM TRADES_QUEUE:',TRADES_QUEUE);
 
         if (!rawData) {
             console.log('No data consumed from the queue.');
@@ -66,12 +67,33 @@ const callPushUserData = async () => {
     }
 };
 
-// Call pushUserData periodically (optional)
+const callPushTradeData = async () => {
+    try {
+        const TradeStream = 'exampleStream2';  // Stream name
+        const rawData = await consumeQueueData(USER_QUEUE); // Fetching data from the 'USER_QUEUE'
+        console.log('DATA FROM USERS:',USER_QUEUE);
+
+        if (!rawData) {
+            console.log('No data consumed from the queue.');
+            return;
+        }
+
+        const result = await pushUserData(TradeStream, rawData);
+
+        if (result && result.status) {
+            console.log('pushUserData result:', result);
+        } else {
+            console.log('Failed to push user data:', result.message);
+        }
+    } catch (error) {
+        console.error("Error in calling pushUserData:", error.message);
+    }
+};
 // setInterval(() => {
     callPushUserData();
+    callPushTradeData();
 // }, 10000); // Adjust the interval as needed (10 seconds here)
 
-// Start the server
 app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
 });
