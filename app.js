@@ -10,7 +10,7 @@ app.use(express.json());
 
 const { getData } = require('./rabbitmq/rabbitmq');
 const {multichainRpc} = require('./multichain/multichain');
-const {callPushConsumerData, callPushUserData} = require('./call_rabitmq_data');
+const {callPushConsumerData, callPushUserData,callPushTradeData} = require('./call_rabitmq_data');
 const userRoutes = require('./user/users'); 
 const consumerRoutes = require('./consumer/consumer'); 
 
@@ -45,6 +45,7 @@ app.post('/create_stream',async (req, res) => {
 // setInterval(() => {
     callPushUserData();
     callPushConsumerData();
+    callPushTradeData();
 // }, 10000); // Adjust the interval as needed (10 seconds here)
 
 app.listen(port, () => {
