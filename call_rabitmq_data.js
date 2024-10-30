@@ -1,6 +1,6 @@
 require('dotenv').config(); 
 
-const TRADES_QUEUE = process.env.TRADES_QUEUE;
+const CONSUMER_QUEUE = process.env.CONSUMER_QUEUE;
 const USER_QUEUE = process.env.USER_QUEUE;
 const {getData,consumeQueueData} = require('./rabbitmq/rabbitmq');
 
@@ -35,11 +35,11 @@ const callPushUserData = async () => {
     }
 };
 
-const callPushTradeData = async () => {
+const callPushConsumerData = async () => {
     try {
-        const TradeStream = 'exampleStream2';  // Stream name
-        const rawData = await consumeQueueData(TRADES_QUEUE); // Fetching data from the 'USER_QUEUE'
-        console.log('DATA FROM TRADES_QUEUE:',TRADES_QUEUE);
+        const ConsumerStream = process.env.CONSUMER_STREAM;
+        const rawData = await consumeQueueData(CONSUMER_QUEUE); // Fetching data from the 'USER_QUEUE'
+        console.log('DATA FROM CONSUMER_QUEUE:',CONSUMER_QUEUE);
 
         if (!rawData) {
             console.log('No data consumed from the queue.');
@@ -47,7 +47,8 @@ const callPushTradeData = async () => {
         }
 
         // Call pushUserData with userStream and rawData
-        const result = await pushConsumerData(TradeStream, rawData);
+        const result = await pushConsumerData(ConsumerStream, rawData);
+        console.log('ConsumerStream', ConsumerStream);
 
         if (result && result.status) {
             console.log('pushUserData result:', result);
@@ -63,6 +64,6 @@ const callPushTradeData = async () => {
 
 
 module.exports = {
-    callPushTradeData,
+    callPushConsumerData,
     callPushUserData,
 };

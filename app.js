@@ -6,46 +6,18 @@ const app = express();
 const port = 3000;
 
 
-console
 app.use(express.json()); 
 
 const { getData } = require('./rabbitmq/rabbitmq');
 const {multichainRpc} = require('./multichain/multichain');
-const {callPushTradeData, callPushUserData} = require('./call_rabitmq_data');
+const {callPushConsumerData, callPushUserData} = require('./call_rabitmq_data');
+const userRoutes = require('./user/users'); 
+const consumerRoutes = require('./consumer/consumer'); 
 
 
 app.get('/api/getData', getData);
-
-app.get('/get_user_data', async (req, res) => {
-    try {
-        const user_stream = 'exampleStream2'; // Replace with your actual stream name
-        const { user_code } = req.query; // Get user_code from query params
-
-        // Fetching stream data from Multichain
-        const result = await multichainRpc('liststreamitems', [user_stream]);
-
-        if (!result || result.length === 0) {
-            return res.status(404).json({ code: 404, status: false, message: 'No data found in the stream' });
-        }
-
-        // Filter by user_code if provided
-        let filteredData = result;
-        if (user_code) {
-            filteredData = result.filter(item => item.keys && item.keys.includes(user_code));
-        }
-
-        // Check if filtered data exists
-        if (filteredData.length > 0) {
-            res.json({ code: 200, status: true, data: filteredData });
-        } else {
-            res.status(404).json({ code: 404, status: false, message: user_code ? `No data found for user_code: ${user_code}` : 'No data found' });
-        }
-    } catch (error) {
-        console.error('Error fetching stream data:', error.message);
-        res.status(500).json({ code: 500, status: false, message: `Error fetching stream data: ${error.message}` });
-    }
-});
-
+app.use('/api', userRoutes.router); 
+app.use('/api', consumerRoutes.router); 
 
 
 app.post('/create_stream',async (req, res) => {
@@ -72,7 +44,7 @@ app.post('/create_stream',async (req, res) => {
 
 // setInterval(() => {
     callPushUserData();
-    callPushTradeData();
+    callPushConsumerData();
 // }, 10000); // Adjust the interval as needed (10 seconds here)
 
 app.listen(port, () => {

@@ -1,5 +1,8 @@
+const express = require('express');
+const router = express.Router();
 const { multichainRpc } = require('../multichain/multichain');
 
+// Function to push user data to the stream
 const pushUserData = async (userStream, rawData) => {
     try {
         if (!rawData) {
@@ -17,12 +20,9 @@ const pushUserData = async (userStream, rawData) => {
 
         if (data && data.buyer) {
             const key = data.buyer;
-
             const result = await multichainRpc("publish", [userStream, key, { "json": data }]);
-            console.log('Data-JSON:', data);
-
+            
             console.log('Data successfully published to the stream:', result);
-
             return { status: 200, message: "Data successfully published", data: result };
         } else {
             console.log("No valid data or 'buyer' is missing.");
@@ -34,8 +34,40 @@ const pushUserData = async (userStream, rawData) => {
     }
 };
 
+// Route to get user data from Multichain
+router.get('/get_user_data', async (req, res) => {
+    try {
+        const user_stream = process.env.USER_STREAM;
 
+        const { user_code } = req.query; // Get user_code from query params
+
+        // Fetching stream data from Multichain
+        const result = await multichainRpc('liststreamitems', [user_stream]);
+
+        if (!result || result.length === 0) {
+            return res.status(404).json({ code: 404, status: false, message: 'No data found in the stream' });
+        }
+
+        // Filter by user_code if provided
+        let filteredData = result;
+        if (user_code) {
+            filteredData = result.filter(item => item.keys && item.keys.includes(user_code));
+        }
+
+        // Check if filtered data exists
+        if (filteredData.length > 0) {
+            res.json({ code: 200, status: true, data: filteredData });
+        } else {
+            res.status(404).json({ code: 404, status: false, message: user_code ? `No data found for user_code: ${user_code}` : 'No data found' });
+        }
+    } catch (error) {
+        console.error('Error fetching stream data:', error.message);
+        res.status(500).json({ code: 500, status: false, message: `Error fetching stream data: ${error.message}` });
+    }
+});
+
+// Export the router and the pushUserData function
 module.exports = {
     pushUserData,
-
+    router
 };

@@ -89,32 +89,6 @@ const ListSteam = async (req, res) => {
     }
 };
 
-// Push user data to the stream
-const pushUserData = async (userStream, rawData) => {
-    try {
-        if (!rawData) {
-            console.log("No data provided.");
-            return { status: 204, message: "No data to push." };
-        }
-
-        const data = JSON.parse(rawData);
-
-        if (data && data.buyer) {
-            const key = data.buyer;
-
-            const result = await multichainRpc("publish", [userStream, key, { "json": data }]);
-            console.log('data:', data);
-
-            console.log('Data successfully published to the stream:', result);
-        } else {
-            console.log("No valid data or 'buyer' is missing.");
-            return { status: 400, message: "Invalid data received." };
-        }
-    } catch (error) {
-        console.error("Error in pushUserData:", error.message);
-        return { code: 500, status: false, message: error.message };
-    }
-};
 
 // Get user data from the stream
 const getUserData = async (req, res) => {
@@ -139,6 +113,5 @@ module.exports = {
     RabbitMQHealth,
     CreateStream,
     ListSteam,
-    pushUserData,
     getUserData,
 };

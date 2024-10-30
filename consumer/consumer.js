@@ -1,6 +1,8 @@
 const { multichainRpc } = require('../multichain/multichain');
+const express = require('express');
+const router = express.Router();
 
-const pushConsumerData = async (userStream, rawData) => {
+const pushConsumerData = async (ConsumerStream, rawData) => {
     try {
         if (!rawData) {
             console.log("No data provided.");
@@ -18,7 +20,7 @@ const pushConsumerData = async (userStream, rawData) => {
         if (data && data.buyer) {
             const key = data.buyer;
 
-            const result = await multichainRpc("publish", [userStream, key, { "json": data }]);
+            const result = await multichainRpc("publish", [ConsumerStream, key, { "json": data }]);
             console.log('Data-JSON:', data);
 
             console.log('Data successfully published to the stream:', result);
@@ -32,9 +34,40 @@ const pushConsumerData = async (userStream, rawData) => {
         console.error("Error in pushUserData:", error.message);
         return { code: 500, status: false, message: error.message };
     }
-};
+}
 
+router.get('/get_consumer_data', async (req, res) => {
+    try {
+        const consumer_stream = process.env.CONSUMER_STREAM;
+
+        const { user_code } = req.query; // Get user_code from query params
+
+        // Fetching stream data from Multichain
+        const result = await multichainRpc('liststreamitems', [consumer_stream]);
+
+        if (!result || result.length === 0) {
+            return res.status(404).json({ code: 404, status: false, message: 'No data found in the stream' });
+        }
+
+        // Filter by user_code if provided
+        let filteredData = result;
+        if (user_code) {
+            filteredData = result.filter(item => item.keys && item.keys.includes(user_code));
+        }
+
+        // Check if filtered data exists
+        if (filteredData.length > 0) {
+            res.json({ code: 200, status: true, data: filteredData });
+        } else {
+            res.status(404).json({ code: 404, status: false, message: user_code ? `No data found for user_code: ${user_code}` : 'No data found' });
+        }
+    } catch (error) {
+        console.error('Error fetching stream data:', error.message);
+        res.status(500).json({ code: 500, status: false, message: `Error fetching stream data: ${error.message}` });
+    }
+});
 
 module.exports = {
     pushConsumerData,
+    router
 };
