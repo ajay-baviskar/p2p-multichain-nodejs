@@ -47,18 +47,30 @@ const pushUserData = async (userStream, rawData) => {
             return { status: 204, message: "No data to push." };
         }
 
-        const data = JSON.parse(rawData);
+        // Parse rawData inside a try-catch to handle invalid JSON
+        let data;
+        try {
+            data = JSON.parse(rawData);
+        } catch (error) {
+            console.error("Invalid JSON format:", error.message);
+            return { status: 400, message: "Invalid JSON format." };
+        }
 
+        // Check if the data has a 'buyer' key
         if (data && data.buyer) {
             const key = data.buyer;
 
+            // Publish to the Multichain stream
             const result = await multichainRpc("publish", [userStream, key, { "json": data }]);
-            console.log('data:', data);
+            console.log('Data-JSON:', data);
 
             console.log('Data successfully published to the stream:', result);
+
+            // Return success response
+            return { status: 200, message: "Data successfully published", data: result };
         } else {
             console.log("No valid data or 'buyer' is missing.");
-            return { status: 400, message: "Invalid data received." };
+            return { status: 400, message: "Invalid data received: 'buyer' is missing." };
         }
     } catch (error) {
         console.error("Error in pushUserData:", error.message);
