@@ -3,6 +3,7 @@ require('dotenv').config();
 const CONSUMER_QUEUE = process.env.CONSUMER_QUEUE;
 const USER_QUEUE = process.env.USER_QUEUE;
 const TRADES_QUEUE = process.env.TRADES_QUEUE;
+const SETTLEMENT_QUEUE = process.env.SETTLEMENT_QUEUE;
 
 const {getData,consumeQueueData} = require('./rabbitmq/rabbitmq');
 
@@ -88,10 +89,34 @@ const callPushTradeData = async () => {
     }
 };
 
+const callPushSettlementData = async () => {
+    try {
+        const SettlementStream = process.env.SETTLEMENT_STREAM;
+        const rawData = await consumeQueueData(SETTLEMENT_QUEUE); // Fetching data from the 'USER_QUEUE'
+        console.log('DATA FROM SETTLEMENT_QUEUE:',SETTLEMENT_QUEUE);
 
+        if (!rawData) {
+            console.log('No data consumed from the queue.');
+            return;
+        }
+
+        // Call pushUserData with userStream and rawData
+        const result = await pushConsumerData(SettlementStream, rawData);
+        console.log('SettlementStream', SettlementStream);
+
+        if (result && result.status) {
+            console.log('pushUserData result:', result);
+        } else {
+            console.log('Failed to push user data:', result.message);
+        }
+    } catch (error) {
+        console.error("Error in calling pushUserData:", error.message);
+    }
+};
 
 module.exports = {
     callPushConsumerData,
     callPushUserData,
-    callPushTradeData
+    callPushTradeData,
+    callPushSettlementData
 };
