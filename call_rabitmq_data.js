@@ -4,6 +4,7 @@ const CONSUMER_QUEUE = process.env.CONSUMER_QUEUE;
 const USER_QUEUE = process.env.USER_QUEUE;
 const TRADES_QUEUE = process.env.TRADES_QUEUE;
 const SETTLEMENT_QUEUE = process.env.SETTLEMENT_QUEUE;
+const CONSUMPTION_QUEUE = process.env.CONSUMPTION_QUEUE;
 
 const {getData,consumeQueueData} = require('./rabbitmq/rabbitmq');
 
@@ -114,9 +115,35 @@ const callPushSettlementData = async () => {
     }
 };
 
+
+const callPushConsumptionData = async () => {
+    try {
+        const ConsumptionStream = process.env.CONSUMPTION_STREAM;
+        const rawData = await consumeQueueData(CONSUMPTION_QUEUE); // Fetching data from the 'USER_QUEUE'
+        console.log('DATA FROM CONSUMPTION_QUEUE:',CONSUMPTION_QUEUE);
+
+        if (!rawData) {
+            console.log('No data consumed from the queue.');
+            return;
+        }
+
+        // Call pushUserData with userStream and rawData
+        const result = await pushConsumerData(ConsumptionStream, rawData);
+        console.log('ConsumptionStream', ConsumptionStream);
+
+        if (result && result.status) {
+            console.log('pushUserData result:', result);
+        } else {
+            console.log('Failed to push user data:', result.message);
+        }
+    } catch (error) {
+        console.error("Error in calling pushUserData:", error.message);
+    }
+};
 module.exports = {
-    callPushConsumerData,
     callPushUserData,
     callPushTradeData,
-    callPushSettlementData
+    callPushConsumerData,
+    callPushSettlementData,
+    callPushConsumptionData
 };
